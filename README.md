@@ -1,9 +1,12 @@
 # ShardKeyValues
 
-## **Warning**
-This is a fairly expensive script to run, use at your own caution
+dumps metadata about each unique shard key value
+
+! **Warning** !
+This is fairly expensive to run, please test on lower environments and use at with caution
 
 ## Usage
+```
 Usage of ./skv:
       --chunkLookup        whether to send additional queries to lookup chunk info for shard key value (default true)
       --coll string        sharded collection name
@@ -15,8 +18,11 @@ Usage of ./skv:
       --skipIndexBuild     whether to enforce index exists by calling a createIndex on collection (will no-op if already exists)
       --uri string         sharded cluster connection string
       --verbosity string   log level [ error | warn | info | debug | trace ] (default "info")
+```
 
+For example: <br>
+`./skv --uri "mongodb+srv://user:pass@cluster.ab1cd.mongodb.net" --db 'test' --coll 'test'`
 
 ## TODO
-[] cache chunks to alleviate repetitive queries to config.chunks
-[] cleanup code, I'm positive things are not done as efficiently as possible
+- cache chunks to alleviate repetitive queries to config.chunks
+- cleanup code, I'm positive things are not done as efficiently as possible

@@ -37,7 +37,7 @@ func init() {
 
 	log.Trace().Msgf("%#v", config)
 
-	rep := reporter.NewReporter(config.ResultFile, config.JsonArray)
+	rep := reporter.NewReporter(config.ResultFile, config.JsonArray, config.RemoveResultsFile)
 	client := connectMongo(config)
 	skDump = sk.NewShardKeyDump(config, client, rep)
 }

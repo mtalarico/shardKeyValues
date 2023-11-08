@@ -8,14 +8,15 @@ import (
 )
 
 type Configuration struct {
-	URI            string
-	NS             ns.Namespace
-	ChunkLookup    bool
-	SkipIndexBuild bool
-	JsonArray      bool
-	Verbosity      string
-	LogFile        string
-	ResultFile     string
+	URI               string
+	NS                ns.Namespace
+	ChunkLookup       bool
+	SkipIndexBuild    bool
+	JsonArray         bool
+	RemoveResultsFile bool
+	Verbosity         string
+	LogFile           string
+	ResultFile        string
 }
 
 func Init() Configuration {
@@ -32,6 +33,7 @@ func Init() Configuration {
 	flag.StringVar(&config.Verbosity, "verbosity", "info", "log level [ error | warn | info | debug | trace ]")
 	flag.StringVar(&config.LogFile, "logFile", "", "full path (including file name) where the log file should be stored (default \"stdout\")")
 	flag.StringVar(&config.ResultFile, "out", "./out.json", "full path (including file name) where the ouput file should be stored")
+	flag.BoolVar(&config.RemoveResultsFile, "rm", false, "whether to remove existing result file, if false will attempt to rename an existing result file")
 
 	flag.Parse()
 

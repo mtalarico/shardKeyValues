@@ -24,9 +24,17 @@ type report struct {
 	str     string
 }
 
-func NewReporter(filePath string, jsonArary bool) Reporter {
+func NewReporter(filePath string, jsonArary bool, rm bool) Reporter {
 	if info, _ := os.Stat(filePath); info != nil {
-		os.Rename(filePath, filePath+"."+time.Now().Local().Format(time.RFC3339)+".bak")
+		var err error
+		if rm {
+			err = os.Remove(filePath)
+		} else {
+			err = os.Rename(filePath, filePath+"."+time.Now().Local().Format(time.RFC3339)+".bak")
+		}
+		if err != nil {
+			log.Fatal().Err(err)
+		}
 	}
 	inputFile, err := os.Create(filePath)
 	if err != nil {

@@ -130,7 +130,7 @@ func (s *ShardKeyDump) ConvertToHashedShardKey(hashedKey string, key bson.Raw) b
 		log.Fatal().Err(err)
 	}
 	if len(cursorResults) != 1 {
-		log.Error().Msg("only expected one document to convert hash shard key, recieved: " + logger.ExtJSONString(cursorResults))
+		log.Error().Msg("only expected one document to convert hash shard key, recieved " + strconv.Itoa(len(cursorResults)))
 	}
 	doc := cursorResults[0]
 
@@ -152,7 +152,7 @@ func (s *ShardKeyDump) getChunkForValue(value bson.Raw) bson.Raw {
 	if err != nil {
 		log.Fatal().Err(err)
 	}
-	log.Trace().Msg("recieved result: " + logger.ExtJSONString(chunk))
+	log.Trace().Msg("recieved result: " + chunk.String())
 
 	return chunk
 }
@@ -166,12 +166,12 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw
 	}
 	if s.hashedKey != "" {
 		minHash = s.ConvertToHashedShardKey(s.hashedKey, min)
-		log.Trace().Msg("min hashed value doc: " + logger.ExtJSONString(minHash))
+		log.Trace().Msg("min hashed value doc: " + minHash.String())
 		minFilter = util.ReplaceValue(min, s.hashedKey, minHash.Lookup("hashedValue"))
 
 		if max.Lookup(s.hashedKey).Type != bson.TypeMaxKey {
 			maxHash = s.ConvertToHashedShardKey(s.hashedKey, max)
-			log.Trace().Msg("max hashed value doc: " + logger.ExtJSONString(maxHash))
+			log.Trace().Msg("max hashed value doc: " + maxHash.String())
 			maxFilter = util.ReplaceValue(max, s.hashedKey, maxHash.Lookup("hashedValue"))
 		}
 	}
@@ -183,7 +183,7 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw
 	if err != nil {
 		log.Fatal().Err(err)
 	}
-	log.Trace().Msg("recived datasize result: " + logger.ExtJSONString(bytes))
+	log.Trace().Msg("recived datasize result: " + bytes.String())
 	meta := bson.D{
 		{"key", min},
 	}
@@ -221,17 +221,17 @@ func (s *ShardKeyDump) ShardKeyValues() {
 	}
 	var min, max bson.Raw
 	min = cursor.Current
-	log.Trace().Msg("set min to " + logger.ExtJSONString(min))
+	log.Trace().Msg("set min to " + min.String())
 
 	if s.config.JsonArray {
 		s.reporter.ReportString("[")
 	}
 	for cursor.Next(context.TODO()) {
 		max = cursor.Current
-		log.Trace().Msg("set max to " + logger.ExtJSONString(max))
+		log.Trace().Msg("set max to " + max.String())
 
-		minJson := logger.ExtJSONString(min)
-		maxJson := logger.ExtJSONString(max)
+		minJson := min.String()
+		maxJson := max.String()
 
 		if minJson == maxJson {
 			log.Trace().Msg("min " + minJson + " and max " + maxJson + " are equal, skipping")

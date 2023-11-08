@@ -3,8 +3,8 @@ package reporter
 import (
 	"context"
 	"os"
-	"sk/internal/logger"
-	"sk/internal/worker"
+	"skv/internal/logger"
+	"skv/internal/worker"
 	"time"
 
 	"github.com/rs/zerolog"

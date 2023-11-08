@@ -1,4 +1,4 @@
-module sk
+module skv
 
 go 1.21
 

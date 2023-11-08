@@ -2,11 +2,11 @@ package sk
 
 import (
 	"context"
-	"sk/internal/cfg"
-	"sk/internal/logger"
-	"sk/internal/ns"
-	"sk/internal/reporter"
-	"sk/internal/util"
+	"skv/internal/cfg"
+	"skv/internal/logger"
+	"skv/internal/ns"
+	"skv/internal/reporter"
+	"skv/internal/util"
 	"strconv"
 
 	"github.com/rs/zerolog/log"

@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	"sk/internal/cfg"
-	"sk/internal/logger"
-	"sk/internal/reporter"
-	"sk/internal/sk"
-	"sk/internal/util"
+	"skv/internal/cfg"
+	"skv/internal/logger"
+	"skv/internal/reporter"
+	"skv/internal/sk"
+	"skv/internal/util"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"

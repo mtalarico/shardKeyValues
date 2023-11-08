@@ -1,7 +1,7 @@
 package ns
 
 import (
-	"sk/internal/logger"
+	"skv/internal/logger"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"

@@ -3,7 +3,7 @@ package logger
 import (
 	"io"
 	"os"
-	"sk/internal/util"
+	"skv/internal/util"
 	"time"
 
 	"github.com/rs/zerolog"

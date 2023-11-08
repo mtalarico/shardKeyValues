@@ -1,7 +1,7 @@
 package cfg
 
 import (
-	"sk/internal/ns"
+	"skv/internal/ns"
 
 	"github.com/rs/zerolog/log"
 	flag "github.com/spf13/pflag"

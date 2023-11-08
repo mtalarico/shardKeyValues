@@ -1,4 +1,4 @@
-package sk
+package skv
 
 import (
 	"context"
@@ -239,13 +239,14 @@ func (s *ShardKeyDump) ShardKeyValues() {
 		}
 		valueMeta := s.getRangeMetadata(meta.Key, min, max)
 		// valueMeta = append(valueMeta, bson.E{"test", primitive.NewDateTimeFromTime(time.Now().UTC())})
-		s.reporter.ReportValue(valueMeta)
+		s.reporter.ReportValue(valueMeta, false)
 		min = max
 	}
 	max = util.MakeInfinity(meta.Key, util.MAX_KEY)
 	valueMeta := s.getRangeMetadata(meta.Key, min, max)
-	s.reporter.ReportValue(valueMeta)
+	s.reporter.ReportValue(valueMeta, true)
 	if s.config.JsonArray {
 		s.reporter.ReportString("]")
 	}
+	s.reporter.Done(context.TODO())
 }

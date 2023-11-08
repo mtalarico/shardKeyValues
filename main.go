@@ -5,7 +5,7 @@ import (
 	"skv/internal/cfg"
 	"skv/internal/logger"
 	"skv/internal/reporter"
-	"skv/internal/sk"
+	"skv/internal/skv"
 	"skv/internal/util"
 
 	"github.com/rs/zerolog/log"
@@ -13,7 +13,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-var skDump sk.ShardKeyDump
+var skDump skv.ShardKeyDump
 
 func connectMongo(config cfg.Configuration) *mongo.Client {
 	options := options.Client().ApplyURI(config.URI)
@@ -39,7 +39,7 @@ func init() {
 
 	rep := reporter.NewReporter(config.ResultFile, config.JsonArray, config.RemoveResultsFile)
 	client := connectMongo(config)
-	skDump = sk.NewShardKeyDump(config, client, rep)
+	skDump = skv.NewShardKeyDump(config, client, rep)
 }
 
 func main() {

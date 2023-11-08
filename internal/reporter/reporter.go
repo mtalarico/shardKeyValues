@@ -21,7 +21,9 @@ type Reporter struct {
 
 type report struct {
 	details bson.D
-	str     string
+	last    bool
+
+	str string
 }
 
 func NewReporter(filePath string, jsonArary bool, rm bool) Reporter {
@@ -57,10 +59,11 @@ func NewReporter(filePath string, jsonArary bool, rm bool) Reporter {
 	return r
 }
 
-func (r *Reporter) Done(ctx context.Context, logger zerolog.Logger) {
-	logger.Debug().Msg("closing reporter queue and waiting for reporters to finish")
+func (r *Reporter) Done(ctx context.Context) {
+	log.Debug().Msg("closing reporter queue and waiting for reporters to finish")
 	close(r.queue)
 	r.pool.Done()
+	r.file.Close()
 }
 
 func (r *Reporter) ReportString(value string) {
@@ -68,19 +71,22 @@ func (r *Reporter) ReportString(value string) {
 	r.queue <- rep
 }
 
-func (r *Reporter) ReportValue(value bson.D) {
-	rep := report{details: value}
+func (r *Reporter) ReportValue(value bson.D, last bool) {
+	rep := report{details: value, last: last}
 	r.queue <- rep
 }
 
 func (r *Reporter) processReports(ctx context.Context, loggerHandle zerolog.Logger) {
 	for rep := range r.queue {
 		if rep.str != "" {
-			r.file.WriteString(rep.str)
+			r.file.WriteString(rep.str + "\n")
 		} else {
 			str := logger.ExtJSONString(rep.details)
 			if r.jsonArray {
-				str = "  " + str + ","
+				str = "  " + str
+				if !rep.last {
+					str = str + ","
+				}
 			}
 			r.file.WriteString(str + "\n")
 		}

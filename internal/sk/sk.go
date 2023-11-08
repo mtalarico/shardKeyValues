@@ -140,6 +140,26 @@ func (s *ShardKeyDump) ConvertToHashedShardKey(hashedKey string, key bson.Raw) b
 	return doc
 }
 
+func (s *ShardKeyDump) getChunkForValue(value bson.Raw) bson.Raw {
+	var chunkFilter bson.D
+	tmp, err := bson.Marshal(s.chunkFilterBase)
+	if err != nil {
+		log.Fatal().Err(err)
+	}
+	bson.Unmarshal(tmp, &chunkFilter)
+	chunkFilter = append(chunkFilter, bson.E{"min", bson.D{{"$lte", value}}})
+	chunkFilter = append(chunkFilter, bson.E{"max", bson.D{{"$gt", value}}})
+	log.Trace().Msg("querying chunk collection with filter: " + logger.ExtJSONString(chunkFilter))
+	result := s.client.Database("config").Collection("chunks").FindOne(context.TODO(), chunkFilter)
+	chunk, err := result.Raw()
+	if err != nil {
+		log.Fatal().Err(err)
+	}
+	log.Trace().Msg("recieved result: " + logger.ExtJSONString(chunk))
+
+	return chunk
+}
+
 func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw) bson.D {
 	var minHash, maxHash bson.Raw
 	minFilter, maxFilter := min, max
@@ -150,7 +170,7 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw
 	if s.hashedKey != "" {
 		minHash = s.ConvertToHashedShardKey(s.hashedKey, min)
 		log.Trace().Msg("min hashed value doc: " + logger.ExtJSONString(minHash))
-		minFilter = util.ReplaceValue(min, s.hashedKey, maxHash.Lookup("hashedValue"))
+		minFilter = util.ReplaceValue(min, s.hashedKey, minHash.Lookup("hashedValue"))
 
 		if max.Lookup(s.hashedKey).Type != bson.TypeMaxKey {
 			maxHash = s.ConvertToHashedShardKey(s.hashedKey, max)
@@ -169,26 +189,21 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw
 	log.Trace().Msg("recived datasize result: " + logger.ExtJSONString(bytes))
 	meta := bson.D{
 		{"key", min},
-		{"size", bytes.Lookup("size")},
-		{"count", bytes.Lookup("numObjects")},
 	}
 	if s.hashedKey != "" {
-		meta = append(meta, bson.E{"hashedKey", minHash.Lookup("hashedValue")})
+		meta = append(meta, bson.E{"hashedKey", minFilter})
 	}
+	meta = append(meta, bson.E{"size", bytes.Lookup("size")})
+	meta = append(meta, bson.E{"count", bytes.Lookup("numObjects")})
 	// is there a better way to do this? TODO... maybe cache chunks on the client side to avoid additional queries
-	// if s.config.ChunkLookup {
-
-	//   filter["min"] = { $lte: value.min };
-	//   filter["max"] = { $gt: value.min };
-	// chunk := s.client.Database("config").Collection("chunks").FindOne(context.TODO(), filter)
-	//   range["shard"] = chunk.shard;
-	//   range["chunk"] = {
-	//     min: chunk.min,
-	//     max: chunk.max,
-	//   };
-	//   // range["onCurrentShardSince"] = chunk.onCurrentShardSince;
-	// }
-	// }
+	if s.config.ChunkLookup {
+		chunk := s.getChunkForValue(minFilter)
+		meta = append(meta, bson.E{"shard", chunk.Lookup("shard")})
+		meta = append(meta, bson.E{"chunk", bson.D{
+			{"min", chunk.Lookup("min")},
+			{"max", chunk.Lookup("max")},
+		}})
+	}
 	return meta
 }
 
@@ -224,6 +239,7 @@ func (s *ShardKeyDump) ShardKeyValues() {
 			continue
 		}
 		valueMeta := s.getRangeMetadata(meta.Key, min, max)
+		// valueMeta = append(valueMeta, bson.E{"test", primitive.NewDateTimeFromTime(time.Now().UTC())})
 		if s.config.JsonArray {
 			fmt.Println("  " + logger.ExtJSONString(valueMeta) + ",")
 		} else {

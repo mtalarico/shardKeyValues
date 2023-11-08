@@ -5,6 +5,9 @@ dumps metadata about each unique shard key value
 ! **Warning** !
 This is fairly expensive to run, please test on lower environments and use at with caution
 
+## Building
+`git clone https://github.com/mtalarico/shardKeyValues.git && cd shardKeyValues && go build main.go`
+
 ## Usage
 ```
 Usage of ./skv:

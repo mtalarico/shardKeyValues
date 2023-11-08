@@ -16,6 +16,7 @@ type Configuration struct {
 	JsonArray      bool
 	Verbosity      string
 	LogFile        string
+	ResultFile     string
 }
 
 func Init() Configuration {
@@ -30,7 +31,8 @@ func Init() Configuration {
 	flag.BoolVar(&config.SkipIndexBuild, "skipIndexBuild", false, "whether to enforce index exists by calling a createIndex on collection (will no-op if already exists)")
 	flag.BoolVar(&config.JsonArray, "jsonArray", false, "whether to write the file as a json array instead of a newline delimited list")
 	flag.StringVar(&config.Verbosity, "verbosity", "info", fmt.Sprintf("%s\n\t- options: %s", "log level", "'error', 'warn', 'info', 'debug', 'trace'"))
-	flag.StringVar(&config.LogFile, "filePath", "", "path to where log file should be stored. If not provided, no file is generated. The file name will be sampler-{datetime}.log for each run")
+	flag.StringVar(&config.LogFile, "logFile", "", "full path (including file name) where the log file should be stored. Logs to STDOUT if this flag is not provided")
+	flag.StringVar(&config.ResultFile, "out", "./out.json", "full path (including file name) where the log file should be stored. Logs to STDOUT if this flag is not provided")
 
 	flag.Parse()
 

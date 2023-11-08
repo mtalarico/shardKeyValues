@@ -4,9 +4,9 @@ import (
 	"context"
 	"sk/internal/cfg"
 	"sk/internal/logger"
+	"sk/internal/reporter"
 	"sk/internal/sk"
 	"sk/internal/util"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -31,15 +31,15 @@ func connectMongo(config cfg.Configuration) *mongo.Client {
 }
 
 func init() {
-	startTime := time.Now()
 	config := cfg.Init()
-	logger.Init(config.Verbosity, config.LogFile, startTime)
+	logger.Init(config.Verbosity, config.LogFile)
 	config.Validate()
 
 	log.Trace().Msgf("%#v", config)
 
+	rep := reporter.NewReporter(config.ResultFile, config.JsonArray)
 	client := connectMongo(config)
-	skDump = sk.NewShardKeyDump(config, client)
+	skDump = sk.NewShardKeyDump(config, client, rep)
 }
 
 func main() {

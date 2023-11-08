@@ -2,10 +2,10 @@ package sk
 
 import (
 	"context"
-	"fmt"
 	"sk/internal/cfg"
 	"sk/internal/logger"
 	"sk/internal/ns"
+	"sk/internal/reporter"
 	"sk/internal/util"
 	"strconv"
 
@@ -19,14 +19,16 @@ import (
 type ShardKeyDump struct {
 	config          cfg.Configuration
 	client          *mongo.Client
+	reporter        reporter.Reporter
 	hashedKey       string
 	chunkFilterBase bson.D
 }
 
-func NewShardKeyDump(config cfg.Configuration, client *mongo.Client) ShardKeyDump {
+func NewShardKeyDump(config cfg.Configuration, client *mongo.Client, reporter reporter.Reporter) ShardKeyDump {
 	return ShardKeyDump{
-		config: config,
-		client: client,
+		config:   config,
+		client:   client,
+		reporter: reporter,
 	}
 }
 
@@ -206,6 +208,8 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw
 func (s *ShardKeyDump) ShardKeyValues() {
 	util.EnsureMongos(s.client)
 	meta := s.getCollMetadata()
+	log.Info().Msg("dumping shard key values for ns " + meta.ID + " and shard key " + meta.Key.String() + " to file " + s.config.ResultFile)
+
 	s.chunkFilterBase = s.getNSFilter(meta)
 	s.hashedKey = util.HashedKey(meta.Key)
 	cursor := s.getCoveredCursor(meta)
@@ -220,7 +224,7 @@ func (s *ShardKeyDump) ShardKeyValues() {
 	log.Trace().Msg("set min to " + logger.ExtJSONString(min))
 
 	if s.config.JsonArray {
-		fmt.Println("[")
+		s.reporter.ReportString("[")
 	}
 	for cursor.Next(context.TODO()) {
 		max = cursor.Current
@@ -235,18 +239,13 @@ func (s *ShardKeyDump) ShardKeyValues() {
 		}
 		valueMeta := s.getRangeMetadata(meta.Key, min, max)
 		// valueMeta = append(valueMeta, bson.E{"test", primitive.NewDateTimeFromTime(time.Now().UTC())})
-		if s.config.JsonArray {
-			fmt.Println("  " + logger.ExtJSONString(valueMeta) + ",")
-		} else {
-			fmt.Println(logger.ExtJSONString(valueMeta))
-		}
+		s.reporter.ReportValue(valueMeta)
 		min = max
 	}
 	max = util.MakeInfinity(meta.Key, util.MAX_KEY)
 	valueMeta := s.getRangeMetadata(meta.Key, min, max)
+	s.reporter.ReportValue(valueMeta)
 	if s.config.JsonArray {
-		fmt.Println("  " + logger.ExtJSONString(valueMeta) + ",")
-	} else {
-		fmt.Println(logger.ExtJSONString(valueMeta))
+		s.reporter.ReportString("]")
 	}
 }

@@ -11,11 +11,11 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func Init(verbosity string, filepath string, startTime time.Time) {
+func Init(verbosity string, filepath string) {
 	zerolog.TimeFieldFormat = time.RFC3339
 	if filepath != "" {
 		runLogFile, err := os.OpenFile(
-			util.CleanPath(filepath)+"/sampler-"+startTime.Local().Format(time.RFC3339)+".log",
+			util.CleanPath(filepath),
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 			0664,
 		)
@@ -48,7 +48,7 @@ func Init(verbosity string, filepath string, startTime time.Time) {
 }
 
 func ExtJSONString(filter interface{}) string {
-	bytes, err := bson.MarshalExtJSON(filter, false, true)
+	bytes, err := bson.MarshalExtJSON(filter, true, true)
 	if err != nil {
 		log.Fatal().Err(err)
 	}

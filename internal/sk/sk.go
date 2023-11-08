@@ -90,7 +90,7 @@ func (s *ShardKeyDump) getKeyProjection(key bson.Raw) bson.D {
 	return projection
 }
 
-func (s *ShardKeyDump) getDistinctCursor(collMeta ns.CollectionMetadata) *mongo.Cursor {
+func (s *ShardKeyDump) getCoveredCursor(collMeta ns.CollectionMetadata) *mongo.Cursor {
 	collection := s.client.Database(s.config.NS.Database).Collection(s.config.NS.Collection)
 	shardKey := collMeta.Key
 	if !s.config.SkipIndexBuild {
@@ -208,7 +208,7 @@ func (s *ShardKeyDump) ShardKeyValues() {
 	meta := s.getCollMetadata()
 	s.chunkFilterBase = s.getNSFilter(meta)
 	s.hashedKey = util.HashedKey(meta.Key)
-	cursor := s.getDistinctCursor(meta)
+	cursor := s.getCoveredCursor(meta)
 	defer cursor.Close(context.TODO())
 
 	if !cursor.Next(context.TODO()) {

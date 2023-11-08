@@ -103,14 +103,9 @@ func (s *ShardKeyDump) getDistinctCursor(collMeta ns.CollectionMetadata) *mongo.
 	}
 	projection := s.getKeyProjection(collMeta.Key)
 	min := util.MakeInfinity(collMeta.Key, util.MIN_KEY)
-	max := util.MakeInfinity(collMeta.Key, util.MAX_KEY)
 	log.Debug().Msg("made projection document: " + logger.ExtJSONString(projection))
 	opts := options.Find().SetProjection(projection).SetHint(collMeta.Key)
-	// if s.hashedKey != "" {
-	// 	min = util.ReplaceValue(min, s.hashedKey, math.MinInt64)
-	// 	max = util.ReplaceValue(max, s.hashedKey, math.MaxInt64)
-	// }
-	opts.SetMin(min).SetMax(max)
+	opts.SetMin(min)
 
 	cursor, err := collection.Find(context.TODO(), bson.D{}, opts)
 	if err != nil {

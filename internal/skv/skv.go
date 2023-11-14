@@ -208,7 +208,7 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw
 func (s *ShardKeyDump) ShardKeyValues() {
 	util.EnsureMongos(s.client)
 	meta := s.getCollMetadata()
-	log.Info().Msg("dumping shard key values for ns " + meta.ID + " and shard key " + meta.Key.String() + " to file " + s.config.ResultFile)
+	log.Info().Msg("dumping shard key values for ns " + meta.ID + " and shard key " + meta.Key.String() + " to " + s.config.ResultFile)
 
 	s.chunkFilterBase = s.getNSFilter(meta)
 	s.hashedKey = util.HashedKey(meta.Key)

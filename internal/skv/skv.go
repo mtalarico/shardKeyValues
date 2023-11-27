@@ -1,6 +1,7 @@
 package skv
 
 import (
+	"bytes"
 	"context"
 	"skv/internal/cfg"
 	"skv/internal/logger"
@@ -13,18 +14,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type ShardKeyDump struct {
-	config          cfg.Configuration
-	client          *mongo.Client
-	reporter        reporter.Reporter
-	hashedKey       string
-	chunkFilterBase bson.D
+	config      cfg.Configuration
+	client      *mongo.Client
+	reporter    *reporter.Reporter
+	chunkCursor *mongo.Cursor
+	collCursor  *mongo.Cursor
 }
 
-func NewShardKeyDump(config cfg.Configuration, client *mongo.Client, reporter reporter.Reporter) ShardKeyDump {
+func NewShardKeyDump(config cfg.Configuration, client *mongo.Client, reporter *reporter.Reporter) ShardKeyDump {
 	return ShardKeyDump{
 		config:   config,
 		client:   client,
@@ -54,25 +54,6 @@ func (s *ShardKeyDump) getCollMetadata() ns.CollectionMetadata {
 	return meta
 }
 
-func (s *ShardKeyDump) getNSFilter(collMeta ns.CollectionMetadata) bson.D {
-	result := s.client.Database("admin").RunCommand(context.TODO(), bson.D{{"buildInfo", 1}})
-	buildInfo, err := result.Raw()
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	versionArr, err := buildInfo.Lookup("versionArray").Array().Elements()
-	major := versionArr[0].Value().AsInt64()
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	log.Debug().Msg("detected major version: " + strconv.FormatInt(major, 10))
-	if major > 5 {
-		return bson.D{{"uuid", collMeta.UUID}}
-	} else {
-		return bson.D{{"ns", collMeta.ID}}
-	}
-}
-
 func (s *ShardKeyDump) getKeyProjection(key bson.Raw) bson.D {
 	var projection bson.D
 	hasId := false
@@ -90,30 +71,6 @@ func (s *ShardKeyDump) getKeyProjection(key bson.Raw) bson.D {
 		projection = append(projection, bson.E{"_id", 0})
 	}
 	return projection
-}
-
-func (s *ShardKeyDump) getCoveredCursor(collMeta ns.CollectionMetadata) *mongo.Cursor {
-	collection := s.client.Database(s.config.NS.Database).Collection(s.config.NS.Collection)
-	shardKey := collMeta.Key
-	if !s.config.SkipIndexBuild {
-		idx := mongo.IndexModel{Keys: shardKey}
-		name, err := collection.Indexes().CreateOne(context.TODO(), idx)
-		if err != nil {
-			log.Fatal().Err(err)
-		}
-		log.Debug().Msg("ran createIndex for '" + name + "'")
-	}
-	projection := s.getKeyProjection(collMeta.Key)
-	min := util.MakeInfinity(collMeta.Key, util.MIN_KEY)
-	log.Debug().Msg("made projection document: " + logger.ExtJSONString(projection))
-	opts := options.Find().SetProjection(projection).SetHint(collMeta.Key)
-	opts.SetMin(min)
-
-	cursor, err := collection.Find(context.TODO(), bson.D{}, opts)
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	return cursor
 }
 
 func (s *ShardKeyDump) ConvertToHashedShardKey(hashedKey string, key bson.Raw) bson.Raw {
@@ -137,42 +94,23 @@ func (s *ShardKeyDump) ConvertToHashedShardKey(hashedKey string, key bson.Raw) b
 	return doc
 }
 
-func (s *ShardKeyDump) getChunkForValue(value bson.Raw) bson.Raw {
-	var chunkFilter bson.D
-	tmp, err := bson.Marshal(s.chunkFilterBase)
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	bson.Unmarshal(tmp, &chunkFilter)
-	chunkFilter = append(chunkFilter, bson.E{"min", bson.D{{"$lte", value}}})
-	chunkFilter = append(chunkFilter, bson.E{"max", bson.D{{"$gt", value}}})
-	log.Trace().Msg("querying chunk collection with filter: " + logger.ExtJSONString(chunkFilter))
-	result := s.client.Database("config").Collection("chunks").FindOne(context.TODO(), chunkFilter)
-	chunk, err := result.Raw()
-	if err != nil {
-		log.Fatal().Err(err)
-	}
-	log.Trace().Msg("recieved result: " + chunk.String())
-
-	return chunk
-}
-
-func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw) bson.D {
+func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, hashedKey string, min bson.Raw, max bson.Raw) bson.D {
 	var minHash, maxHash bson.Raw
 	minFilter, maxFilter := min, max
 	datasizeFilter := bson.D{
 		{"datasize", s.config.NS.String()},
 		{"keyPattern", key},
 	}
-	if s.hashedKey != "" {
-		minHash = s.ConvertToHashedShardKey(s.hashedKey, min)
+	if hashedKey != "" {
+		minHash = s.ConvertToHashedShardKey(hashedKey, min)
 		log.Trace().Msg("min hashed value doc: " + minHash.String())
-		minFilter = util.ReplaceValue(min, s.hashedKey, minHash.Lookup("hashedValue"))
+		minFilter = util.ReplaceValue(min, hashedKey, minHash.Lookup("hashedValue"))
 
-		if max.Lookup(s.hashedKey).Type != bson.TypeMaxKey {
-			maxHash = s.ConvertToHashedShardKey(s.hashedKey, max)
+		// if we're on the final value of MaxKey, do not hash it, that could have disasterous results...
+		if max.Lookup(hashedKey).Type != bson.TypeMaxKey {
+			maxHash = s.ConvertToHashedShardKey(hashedKey, max)
 			log.Trace().Msg("max hashed value doc: " + maxHash.String())
-			maxFilter = util.ReplaceValue(max, s.hashedKey, maxHash.Lookup("hashedValue"))
+			maxFilter = util.ReplaceValue(max, hashedKey, maxHash.Lookup("hashedValue"))
 		}
 	}
 	datasizeFilter = append(datasizeFilter, bson.E{"min", minFilter})
@@ -187,20 +125,11 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, min bson.Raw, max bson.Raw
 	meta := bson.D{
 		{"key", min},
 	}
-	if s.hashedKey != "" {
+	if hashedKey != "" {
 		meta = append(meta, bson.E{"hashedKey", minFilter})
 	}
 	meta = append(meta, bson.E{"size", bytes.Lookup("size")})
 	meta = append(meta, bson.E{"count", bytes.Lookup("numObjects")})
-	// is there a better way to do this? TODO... maybe cache chunks on the client side to avoid additional queries
-	if s.config.ChunkLookup {
-		chunk := s.getChunkForValue(minFilter)
-		meta = append(meta, bson.E{"shard", chunk.Lookup("shard")})
-		meta = append(meta, bson.E{"chunk", bson.D{
-			{"min", chunk.Lookup("min")},
-			{"max", chunk.Lookup("max")},
-		}})
-	}
 	return meta
 }
 
@@ -210,41 +139,48 @@ func (s *ShardKeyDump) ShardKeyValues() {
 	meta := s.getCollMetadata()
 	log.Info().Msg("dumping shard key values for ns " + meta.ID + " and shard key " + meta.Key.String() + " to " + s.config.ResultFile)
 
-	s.chunkFilterBase = s.getNSFilter(meta)
-	s.hashedKey = util.HashedKey(meta.Key)
-	cursor := s.getCoveredCursor(meta)
-	defer cursor.Close(context.TODO())
+	// init cursors
+	s.initCoveredCursor(meta)
+	s.initChunkCursor(meta)
+	defer s.collCursor.Close(context.TODO())
+	defer s.chunkCursor.Close(context.TODO())
 
-	if !cursor.Next(context.TODO()) {
+	if !s.collCursor.Next(context.TODO()) {
 		log.Error().Msg("no docs found in collection")
 		return
 	}
+	if !s.chunkCursor.Next(context.TODO()) {
+		log.Error().Msg("no docs found in chunks collection")
+		return
+	}
 	var min, max bson.Raw
-	min = cursor.Current
+	min = s.collCursor.Current
 	log.Trace().Msg("set min to " + min.String())
+
+	// getting the hash key (if there is one) to avoid calculating each loop
+	hashedKey := util.HashedKey(meta.Key)
 
 	if s.config.JsonArray {
 		s.reporter.ReportString("[")
 	}
-	for cursor.Next(context.TODO()) {
-		max = cursor.Current
+	for s.collCursor.Next(context.TODO()) {
+		max = s.collCursor.Current
 		log.Trace().Msg("set max to " + max.String())
 
-		minJson := min.String()
-		maxJson := max.String()
-
-		if minJson == maxJson {
-			log.Trace().Msg("min " + minJson + " and max " + maxJson + " are equal, skipping")
+		if bytes.Equal(min, max) {
+			log.Trace().Msg("min " + min.String() + " and max " + max.String() + " are equal, skipping")
 			continue
 		}
-		valueMeta := s.getRangeMetadata(meta.Key, min, max)
-		// valueMeta = append(valueMeta, bson.E{"test", primitive.NewDateTimeFromTime(time.Now().UTC())})
+		valueMeta := s.getRangeMetadata(meta.Key, hashedKey, min, max)
+		chunkMeta := s.getChunkMetadata(min)
+		valueMeta = append(valueMeta, chunkMeta...)
 		s.reporter.ReportValue(valueMeta, false)
 		min = max
 	}
-	max = util.MakeInfinity(meta.Key, util.MAX_KEY)
-	valueMeta := s.getRangeMetadata(meta.Key, min, max)
-	s.reporter.ReportValue(valueMeta, true)
+	valueMeta := s.getRangeMetadata(meta.Key, hashedKey, min, max)
+	chunkMeta := s.getChunkMetadata(min)
+	valueMeta = append(valueMeta, chunkMeta...)
+	s.reporter.ReportValue(valueMeta, false)
 	if s.config.JsonArray {
 		s.reporter.ReportString("]")
 	}

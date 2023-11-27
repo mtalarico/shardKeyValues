@@ -3,7 +3,7 @@ package logger
 import (
 	"io"
 	"os"
-	"skv/internal/util"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -15,7 +15,7 @@ func Init(verbosity string, filepath string) {
 	zerolog.TimeFieldFormat = time.RFC3339
 	if filepath != "" {
 		runLogFile, err := os.OpenFile(
-			util.CleanPath(filepath),
+			cleanPath(filepath),
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY,
 			0664,
 		)
@@ -53,4 +53,9 @@ func ExtJSONString(filter interface{}) string {
 		log.Fatal().Err(err)
 	}
 	return string(bytes)
+}
+
+func cleanPath(path string) string {
+	cleaned, _ := strings.CutSuffix(path, "/")
+	return cleaned
 }

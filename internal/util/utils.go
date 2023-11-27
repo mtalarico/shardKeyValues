@@ -3,7 +3,6 @@ package util
 import (
 	"context"
 	"regexp"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"go.mongodb.org/mongo-driver/bson"
@@ -11,24 +10,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func CleanPath(path string) string {
-	cleaned, _ := strings.CutSuffix(path, "/")
-	return cleaned
-}
-
 func Redact(uri string) string {
 	re := regexp.MustCompile(`\:\/\/(.*?)\:(.*?)\@`)
 	return re.ReplaceAllString(uri, "://xxxx:xxxx@")
 }
 
 func HashedKey(doc bson.Raw) string {
-	values, err := doc.Values()
+	elems, err := doc.Elements()
 	if err != nil {
 		log.Fatal().Err(err)
 	}
-	for ind, value := range values {
-		if value.Type == bson.TypeString && value.StringValue() == "hashed" {
-			return doc.Index(uint(ind)).Key()
+	for _, elem := range elems {
+		if elem.Value().Type == bson.TypeString && elem.Value().StringValue() == "hashed" {
+			return elem.Key()
 		}
 	}
 	return ""
@@ -36,7 +30,7 @@ func HashedKey(doc bson.Raw) string {
 
 func EnsureMongos(client *mongo.Client) {
 	result := client.Database("admin").RunCommand(context.TODO(), bson.D{{"isdbgrid", 1}})
-	res, err := result.DecodeBytes()
+	res, err := result.Raw()
 	if err != nil {
 		code := res.Lookup("code").AsInt64()
 		if code == 59 {
@@ -85,4 +79,13 @@ func MakeInfinity(key bson.Raw, mode Bound) bson.Raw {
 		log.Fatal().Err(err)
 	}
 	return raw
+}
+
+func Max(a int, b int) int {
+	switch a > b {
+	case true:
+		return a
+	default:
+		return b
+	}
 }

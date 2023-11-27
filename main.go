@@ -39,7 +39,7 @@ func init() {
 
 	rep := reporter.NewReporter(config.ResultFile, config.JsonArray, config.RemoveResultsFile)
 	client := connectMongo(config)
-	skDump = skv.NewShardKeyDump(config, client, rep)
+	skDump = skv.NewShardKeyDump(config, client, &rep)
 }
 
 func main() {

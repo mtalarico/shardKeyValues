@@ -24,11 +24,12 @@ func (s *ShardKeyDump) initCoveredCursor(collMeta ns.CollectionMetadata) {
 		}
 		log.Debug().Msg("ran createIndex for '" + name + "'")
 	}
-	projection := s.getKeyProjection(collMeta.Key)
+	projection := util.GetKeyProjection(collMeta.Key, false)
+	sort := util.GetKeyProjection(collMeta.Key, true)
 	min := util.MakeInfinity(collMeta.Key, util.MIN_KEY)
 	log.Debug().Msg("made projection document: " + logger.ExtJSONString(projection))
 	opts := options.Find().SetProjection(projection).SetHint(collMeta.Key)
-	opts.SetMin(min).SetSort(projection)
+	opts.SetMin(min).SetSort(sort)
 
 	cursor, err := collection.Find(context.TODO(), bson.D{}, opts)
 	if err != nil {
@@ -74,8 +75,12 @@ func (s *ShardKeyDump) getChunkNSFilter(collMeta ns.CollectionMetadata) bson.D {
 }
 
 func (s *ShardKeyDump) getChunkMetadata(value bson.Raw) bson.D {
-	val := util.DocGteRangeBound(value, s.chunkCursor.Current)
-	log.Trace().Bool("gteShardKey", val).Msg("")
+	gte := util.DocGteRangeBound(value, s.chunkCursor.Current)
+	log.Trace().Bool("gteShardKey", gte).Msg("")
+
+	if gte {
+		s.chunkCursor.Next(context.TODO())
+	}
 
 	chunk := s.chunkCursor.Current
 	// chunkFilter = append(chunkFilter, bson.E{"min", bson.D{{"$lte", value}}})

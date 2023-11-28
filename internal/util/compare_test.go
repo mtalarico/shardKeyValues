@@ -667,3 +667,64 @@ func TestADecimal128BDouble_AgtB(t *testing.T) {
 	expected := true
 	assert.Equal(t, expected, res)
 }
+
+// -- Mixed Type --
+func TestANullBString(t *testing.T) {
+	aVal := primitive.Null{}
+	bVal := "not null"
+	a, _ := bson.Marshal(bson.D{{"x", aVal}})
+	b, _ := bson.Marshal(bson.D{{"x", bVal}})
+	res := DocGteRangeBound(a, b)
+	expected := false
+	assert.Equal(t, expected, res)
+}
+
+func TestANullBString_Rev(t *testing.T) {
+	aVal := "not null"
+	bVal := primitive.Null{}
+	a, _ := bson.Marshal(bson.D{{"x", aVal}})
+	b, _ := bson.Marshal(bson.D{{"x", bVal}})
+	res := DocGteRangeBound(a, b)
+	expected := true
+	assert.Equal(t, expected, res)
+}
+
+func TestANullBString_CompoundKey(t *testing.T) {
+	aVal := primitive.Null{}
+	bVal := "not null"
+	a, _ := bson.Marshal(bson.D{{"prefix", true}, {"x", aVal}})
+	b, _ := bson.Marshal(bson.D{{"prefix", true}, {"x", bVal}})
+	res := DocGteRangeBound(a, b)
+	expected := false
+	assert.Equal(t, expected, res)
+}
+
+func TestANullBString_CompoundKey_Rev(t *testing.T) {
+	aVal := "not null"
+	bVal := primitive.Null{}
+	a, _ := bson.Marshal(bson.D{{"prefix", true}, {"x", aVal}})
+	b, _ := bson.Marshal(bson.D{{"prefix", true}, {"x", bVal}})
+	res := DocGteRangeBound(a, b)
+	expected := true
+	assert.Equal(t, expected, res)
+}
+
+func TestANullBString_CompoundKey_PrefixDiff(t *testing.T) {
+	aVal := primitive.Null{}
+	bVal := "not null"
+	a, _ := bson.Marshal(bson.D{{"prefix", false}, {"x", aVal}})
+	b, _ := bson.Marshal(bson.D{{"prefix", true}, {"x", bVal}})
+	res := DocGteRangeBound(a, b)
+	expected := false
+	assert.Equal(t, expected, res)
+}
+
+func TestANullBString_CompoundKey_PrefixDiff_Rev(t *testing.T) {
+	aVal := "not null"
+	bVal := primitive.Null{}
+	a, _ := bson.Marshal(bson.D{{"prefix", true}, {"x", aVal}})
+	b, _ := bson.Marshal(bson.D{{"prefix", false}, {"x", bVal}})
+	res := DocGteRangeBound(a, b)
+	expected := true
+	assert.Equal(t, expected, res)
+}

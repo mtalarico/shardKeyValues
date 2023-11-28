@@ -106,7 +106,7 @@ func (s *ShardKeyDump) getCoveredCursor(collMeta ns.CollectionMetadata) *mongo.C
 	projection := s.getKeyProjection(collMeta.Key)
 	min := util.MakeInfinity(collMeta.Key, util.MIN_KEY)
 	log.Debug().Msg("made projection document: " + logger.ExtJSONString(projection))
-	opts := options.Find().SetProjection(projection).SetHint(collMeta.Key)
+	opts := options.Find().SetProjection(projection).SetHint(collMeta.Key).SetSort(collMeta.Key)
 	opts.SetMin(min)
 
 	cursor, err := collection.Find(context.TODO(), bson.D{}, opts)
@@ -209,6 +209,9 @@ func (s *ShardKeyDump) ShardKeyValues() {
 	util.EnsureMongos(s.client)
 	meta := s.getCollMetadata()
 	log.Info().Msg("dumping shard key values for ns " + meta.ID + " and shard key " + meta.Key.String() + " to " + s.config.ResultFile)
+	if !s.config.ChunkLookup {
+		log.Info().Msg("chunk lookup disabled")
+	}
 
 	s.chunkFilterBase = s.getNSFilter(meta)
 	s.hashedKey = util.HashedKey(meta.Key)

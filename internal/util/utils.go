@@ -90,7 +90,7 @@ func Max(a int, b int) int {
 	}
 }
 
-func GetKeyProjection(key bson.Raw, skipId bool) bson.D {
+func GetKeyProjection(key bson.Raw) bson.D {
 	var projection bson.D
 	hasId := false
 	keys, err := key.Elements()
@@ -103,7 +103,7 @@ func GetKeyProjection(key bson.Raw, skipId bool) bson.D {
 		}
 		projection = append(projection, bson.E{key.Key(), 1})
 	}
-	if !hasId && !skipId {
+	if !hasId {
 		projection = append(projection, bson.E{"_id", 0})
 	}
 	return projection

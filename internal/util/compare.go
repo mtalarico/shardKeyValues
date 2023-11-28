@@ -63,10 +63,9 @@ func DocGteRangeBound(doc, rngBound bson.Raw) bool {
 		}
 
 		rngBoundRank := typeRank(rngBoundV.Type)
-		log.Trace().Int("Range Bound Rank: ", rngBoundRank).Str("key", currentKey).Msg("")
-
 		docRank := typeRank(docValue.Type)
-		log.Trace().Int("Doc Rank: ", docRank).Str("key", currentKey).Msg("")
+		// log.Trace().Int("Range Bound Rank: ", rngBoundRank).Str("key", currentKey).Msg("")
+		// log.Trace().Int("Doc Rank: ", docRank).Str("key", currentKey).Msg("")
 
 		if docRank != rngBoundRank {
 			return docRank > rngBoundRank

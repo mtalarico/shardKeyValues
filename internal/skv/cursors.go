@@ -25,12 +25,11 @@ func (s *ShardKeyDump) initCoveredCursor(collMeta ns.CollectionMetadata) {
 		log.Debug().Msg("ran createIndex for '" + name + "'")
 	}
 	projection := util.GetKeyProjection(collMeta.Key, false)
-	sort := util.GetKeyProjection(collMeta.Key, true)
+	// sort := util.GetKeyProjection(collMeta.Key, true)
 	min := util.MakeInfinity(collMeta.Key, util.MIN_KEY)
+	max := util.MakeInfinity(collMeta.Key, util.MAX_KEY)
 	log.Debug().Msg("made projection document: " + logger.ExtJSONString(projection))
-	opts := options.Find().SetProjection(projection).SetHint(collMeta.Key)
-	opts.SetMin(min).SetSort(sort)
-
+	opts := options.Find().SetProjection(projection).SetHint(collMeta.Key).SetMin(min).SetMax(max)
 	cursor, err := collection.Find(context.TODO(), bson.D{}, opts)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot open cursor against collection")

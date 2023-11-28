@@ -24,7 +24,7 @@ func (s *ShardKeyDump) initCoveredCursor(collMeta ns.CollectionMetadata) {
 		}
 		log.Debug().Msg("ran createIndex for '" + name + "'")
 	}
-	projection := util.GetKeyProjection(collMeta.Key, false)
+	projection := util.GetKeyProjection(collMeta.Key)
 	// sort := util.GetKeyProjection(collMeta.Key, true)
 	min := util.MakeInfinity(collMeta.Key, util.MIN_KEY)
 	max := util.MakeInfinity(collMeta.Key, util.MAX_KEY)

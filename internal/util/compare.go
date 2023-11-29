@@ -45,6 +45,8 @@ func typeRank(t bsontype.Type) int {
 	}
 }
 
+// compare the doc to the rangeBound document and return true it is gte
+// !TODO: clean this function up, its a mess
 func DocGteRangeBound(doc, rngBound bson.Raw) bool {
 	rngBoundPairs, err := rngBound.Elements()
 	if err != nil {

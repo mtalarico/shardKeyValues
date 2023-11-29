@@ -117,6 +117,10 @@ func (s *ShardKeyDump) getRangeMetadata(key bson.Raw, hashedKey string, min bson
 // get metadata for each unique shard key value
 func (s *ShardKeyDump) ShardKeyValues() {
 	util.EnsureMongos(s.client)
+	if s.balancerEnabled() {
+		defer s.setCollectionBalancerState(true)
+	}
+	s.setCollectionBalancerState(false)
 	meta := s.getCollMetadata()
 	log.Info().Msg("dumping shard key values for ns " + meta.ID + " and shard key " + meta.Key.String() + " to " + s.config.ResultFile)
 
